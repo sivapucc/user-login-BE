@@ -11,35 +11,42 @@ router.get("/", async (req, res) => {
     const user = await UserLogin.find({});
     res.status(200).json({ data: user });
   } catch (error) {
-    console.log(error);
-    res.status(500);
+    console.error("Error occurred:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-router.post("/signup", async (req, res) => {
+function validateSignupData(req, res, next) {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+  next();
+}
+
+router.post("/signup", validateSignupData, async (req, res) => {
   try {
-    let userData = await UserLogin.findOne({ email: req.body.email }).populate(
-      "email"
-    );
-    console.log(userData);
-    if (userData) {
-      return res.status(400).json({ msg: "user already exists" });
-    } else {
-      const salt = await bcrypt.genSalt(10);
-      const hashedpassword = await bcrypt.hash(req.body.password, salt);
-      userData = await UserLogin.create({
-        name: req.body.name,
-        email: req.body.email,
-        password: hashedpassword,
-      });
-      const token = await generateJwtToken(userData._id);
-      return res
-        .status(201)
-        .json({ message: "Registration successfull", token });
+    const { name, email, password } = req.body;
+
+    const existingUser = await UserLogin.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
     }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = await UserLogin.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
+    const token = await generateJwtToken(newUser._id);
+
+    res.status(201).json({ message: "Registration successful", token });
   } catch (error) {
-    console.log(error);
-    return res.status(500);
+    console.error("Signup error:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -71,30 +78,27 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/forgot", async (req, res) => {
-  const email = req.body.foemail;
+  const { foemail: email } = req.body;
+
   try {
     const user = await UserLogin.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "Invalid Email...." });
-    const otp = Math.floor(1000 + Math.random() * 9000);
-    const reciever = user;
-    const token = await mailsender(reciever, otp);
+    if (!user) return res.status(400).json({ msg: "Invalid Email" });
 
-    if (saveOtp.findOne({ email })) {
-      await saveOtp.findOneAndUpdate(
-        { email: email },
-        { $set: { otp: otp, token: token } },
-        { new: true }
-      );
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const token = await mailsender(user, otp);
+
+    const existingOtp = await saveOtp.findOne({ email });
+
+    if (existingOtp) {
+      await saveOtp.updateOne({ email }, { otp, token });
     } else {
-      await saveOtp.create({
-        otp,
-        token,
-        email,
-      });
+      await saveOtp.create({ email, otp, token });
     }
-    res.status(200).json({ token: token });
+
+    res.status(200).json({ token });
   } catch (error) {
-    return res.status(500).json({ msg: error.message });
+    console.error("Error in forgot route:", error);
+    res.status(500).json({ msg: "Internal server error" });
   }
 });
 
@@ -127,7 +131,8 @@ router.post("/update/password", async (req, res) => {
     const newpassword = req.body.pass;
     let salt = await bcrypt.genSalt(10);
     let hashpassword = await bcrypt.hash(newpassword, salt);
-    const token = headers["token"];
+    const token = req.headers["token"];
+
     const email = await saveOtp.findOne({ token });
     const user = await UserLogin.findOneAndUpdate(
       { email: email.email },
