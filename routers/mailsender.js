@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
 import { generateJwtToken } from "../models/user.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export async function mailsender(receiverEmail, otp) {
   try {
@@ -7,7 +10,7 @@ export async function mailsender(receiverEmail, otp) {
       service: "gmail",
       auth: {
         user: "praveencheetak@gmail.com",
-        pass: "nfka kkdr aclz kmkh", // App Password
+        pass: process.env.PASS, // App Password
       },
     });
 

@@ -13,4 +13,6 @@ app.use(cors());
 createDbConnection();
 
 app.use("/", userRouter);
-app.listen(9080, () => console.log("server running in localhost:9080"));
+app.listen(process.env.PORT, () =>
+  console.log("server running in localhost:9080")
+);
