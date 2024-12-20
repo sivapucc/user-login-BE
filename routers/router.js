@@ -48,23 +48,23 @@ router.post("/login", async (req, res) => {
     const user = await UserLogin.findOne({ email: req.body.email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials...." });
+    } else {
+      const validatePassward = await bcrypt.compare(
+        req.body.password,
+        user.password
+      );
+      if (!validatePassward) {
+        return res.status(400).json({ message: "Invalid credentials...." });
+      }
+
+      const token = await generateJwtToken(user._id);
+
+      res.status(200).json({
+        message: "Logedin sucessfully....",
+        token: token,
+        useName: user.name,
+      });
     }
-
-    const validatePassward = await bcrypt.compare(
-      req.body.password,
-      user.password
-    );
-    if (!validatePassward) {
-      return res.status(400).json({ message: "Invalid credentials...." });
-    }
-
-    const token = await generateJwtToken(user._id);
-
-    res.status(200).json({
-      message: "Logedin sucessfully....",
-      token: token,
-      useName: user.name,
-    });
   } catch (error) {
     console.log(error);
   }
