@@ -6,15 +6,15 @@ import { saveOtp } from "../models/otp.js";
 
 const router = express.Router();
 
-// router.get("/all", async (req, res) => {
-//   try {
-//     const user = await User.find({});
-//     res.status(200).json({ data: user });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500);
-//   }
-// });
+router.get("/all", async (req, res) => {
+  try {
+    const user = await UserLogin.find({});
+    res.status(200).json({ data: user });
+  } catch (error) {
+    console.log(error);
+    res.status(500);
+  }
+});
 
 router.post("/signup", async (req, res) => {
   try {
